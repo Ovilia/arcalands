@@ -246,30 +246,11 @@ function initDom() {
         useEffect = !useEffect;
         if (useEffect) {
             // add effect
-            $('.space').each(function() {
-                $(this).data('effectId', $(this).jWebAudio('effect', '3d'));
-                var vol = $(this).data('volume') * 3;
-                $(this).jWebAudio('options', {
-                    volume: vol
-                });
-                $(this).data('volume', vol);
-                console.log(vol);
-            });
-            $('#effect').text('Disable 3D Effect')
+            $('#effect').text('Disable Shader')
                         .css('background-color', '#ff6');
         } else {
             // remove effect
-            $('.space').each(function() {
-                $(this).jWebAudio('deleteEffect', $(this).data('effectId'));
-                $(this).removeData('effectId');
-                var vol = $(this).data('volume') / 3;
-                $(this).jWebAudio('options', {
-                    volume: vol
-                });
-                $(this).data('volume', vol);
-                console.log(vol);
-            });
-            $('#effect').text('Enable 3D Effect')
+            $('#effect').text('Enable Shader')
                         .css('background-color', '#f60');
         }
     });
