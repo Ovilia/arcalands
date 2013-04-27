@@ -3,31 +3,56 @@ var stats = null;
 var arca = null;
     
 var ratio = 4 / 3, // containerWidth / containerHeight
-    renderer = null,
+    width = null, // containerWidth
+    height = null; // containerHeight
+
+var renderer = null,
     scene = null,
     camera = null,
     cube = null,
     animating = null,
     targetLight = null,
-    ballPlane = null;    
+    ballPlane = null;
     
 var muted = false,
     useEffect = true;
     
 var wallSize = {
-        x: 1600,
-        y: 1200,
-        z: 2000
-    };
+    x: 1600,
+    y: 1200,
+    z: 1000
+};
     
 var mousePressed = false,
     touchPressed = false;
+
+var dof = {
+    shader: {
+        dofVert: null,
+        dofFrag: null,
+        depthVert: null,
+        depthFrag: null
+    },
+    material: {
+        dof: null,
+        depth: null
+    },
+    mesh: null,
+    
+    texture: null,
+    depth: null,
+    
+    scene: null,
+    camera: null
+}
 
 // things loaded
 var loaded = {},
     allLoaded = false;
 
 $(document).ready(function() {
+    resize();
+        
     // stats
     stats = new Stats();
     stats.domElement.style.position = 'absolute';
@@ -35,34 +60,40 @@ $(document).ready(function() {
     stats.domElement.style.top = '0px';
     document.body.appendChild(stats.domElement);
     
-    // container size
-    var w = $(window).width();
-    var h = $(window).height();
-    if (w / h > ratio) {
-        w = h * ratio;
-    } else {
-        h = w / ratio;
-    }
-    $('#container').css({width: w, height: h});
-    
     // renderer
-    renderer = new THREE.WebGLRenderer({antialias: true});
-    renderer.setSize(w, h);
-    // enable shadows on the renderer
+    renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        preserveDrawingBuffer: true
+    });
+    renderer.setSize(width, height);
     renderer.shadowMapEnabled = true;
+    renderer.autoClear = false;
+    renderer.setClearColor(0x000000);
     $('#container').append(renderer.domElement);
     
     // scene
     scene = new THREE.Scene();
+    modelScene = new THREE.Scene();
+    dof.scene = new THREE.Scene();
     
     // camera
-    camera = new THREE.PerspectiveCamera(60, ratio, 1, 4000);
-    camera.position.set(0, 0, 500 * Math.sqrt(3));
+    cameraNear = 600 * Math.sqrt(3);
+    cameraFar = cameraNear + wallSize.z;
+    camera = new THREE.PerspectiveCamera(60, ratio, cameraNear, cameraFar);
+    camera.position.set(0, 0, cameraNear);
     scene.add(camera);
+    
+    dof.camera = new THREE.OrthographicCamera(-width / 2, width / 2,
+            height / 2, -height / 2, -10000, 10000);
+    dof.camera.position.z = 1000;
+    dof.scene.add(dof.camera);
     
     // light
     var light = new THREE.PointLight(0xffffff);
     scene.add(light);
+    var dofLight = new THREE.PointLight(0xffffff);
+    dofLight.position = dof.camera.position;
+    dof.scene.add(dofLight);
     
     arca = new ArcaLands();
     
@@ -71,7 +102,9 @@ $(document).ready(function() {
                    new THREE.Vector3(0, -wallSize.y / 2, -wallSize.z / 2), 
                    new THREE.Vector3(-wallSize.x / 2, 0, -wallSize.z / 2), 
                    new THREE.Vector3(0, wallSize.y / 2, -wallSize.z / 2)];
-    var wallRot = [new THREE.Vector3(0, Math.PI / 2, 0),
+    var wallRot = [new THREE.Vector3(0, -Math.PI / 2, 0),
+                   new THREE.Vector3(-Math.PI / 2, 0, 0),
+                   new THREE.Vector3(0, Math.PI / 2, 0),
                    new THREE.Vector3(Math.PI / 2, 0, 0)]
     arca.walls = [];
     var wallMap = THREE.ImageUtils.loadTexture('image/wall.jpg');
@@ -85,7 +118,7 @@ $(document).ready(function() {
                     side: THREE.DoubleSide
         }));
         arca.walls[i].position = wallPos[i];
-        arca.walls[i].rotation = wallRot[i % 2];
+        arca.walls[i].rotation = wallRot[i];
         scene.add(arca.walls[i]);
     }
     // farthest wall
@@ -120,31 +153,183 @@ $(document).ready(function() {
     arca.board.mesh.position = arca.board.position;
     scene.add(arca.board.mesh);
     
-    initDom();
-    initSound();
-    
     addMouseHandler();
     
-    loadModel();
+    initDom();
+    initSound();
+    initDof();
     
+    loadModel();
 });
+
+function beforeStart() {
+    // init frame buffer to get texture and depth data
+    dof.texture = new THREE.WebGLRenderTarget(width, height, {
+        wrapS: THREE.RepeatWrapping,
+        wrapT: THREE.RepeatWrapping,
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.NearestFilter,
+        format: THREE.RGBAFormat
+    });
+    dof.depth = new THREE.WebGLRenderTarget(width, height, {
+        wrapS: THREE.RepeatWrapping,
+        wrapT: THREE.RepeatWrapping,
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.NearestFilter,
+        format: THREE.RGBAFormat
+    });
+    
+    // dof display plane
+    // depth material
+    dof.material.depth = new THREE.ShaderMaterial({
+        uniforms: {
+            farmostDepth: {
+                type: 'f',
+                value: 1000
+            },
+        },
+        attributes: {},
+        vertexShader: dof.shader.depthVert,
+        fragmentShader: dof.shader.depthFrag,
+        transparent: true
+    });
+    
+    // render to target material
+    dof.material.dof = new THREE.ShaderMaterial({
+        uniforms: {
+            texture: {
+                type: 't',
+                value: dof.texture
+            },
+            depth: {
+                type: 't',
+                value: dof.depth
+            },
+            
+            wSplitCnt: {
+                type: 'f',
+                value: width
+            },
+            hSplitCnt: {
+                type: 'f',
+                value: height
+            },
+            
+            // world position which is exactly in focus
+            focusDistance: {
+                type: 'f',
+                value: arca.ball.position.z
+            },
+            // length of objects in focus
+            focalLength: {
+                type: 'f',
+                value: 200
+            },
+            
+            clipNear: {
+                type: 'f',
+                value: cameraNear
+            },
+            clipFar: {
+                type: 'f',
+                value: cameraFar
+            },
+            
+            // max CoC, which should not be larger than MAX_RADIUS in dof.fs
+            maxCoc: {
+                type: 'i',
+                value: 8
+            },
+            // layer counts if using layered method
+            layerCount: {
+                type: 'f',
+                value: 5
+            }
+        },
+        vertexShader: dof.shader.dofVert,
+        fragmentShader: dof.shader.dofFrag,
+        depthWrite: false
+    });
+    dof.mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height), dof.material.dof);
+    dof.mesh.position.z = 1000;
+    dof.scene.add(dof.mesh);
+    
+    // start
+    run();
+}
+
+function setMaterial (isDepth) {
+    if (isDepth) {
+        for (var i in arca.walls) {
+            arca.walls[i].__mat = arca.walls[i].material;
+            arca.walls[i].material = dof.material.depth;
+        }
+        for (var i in arca.targets) {
+            arca.targets[i].mesh.__mat = arca.targets[i].mesh.material;
+            arca.targets[i].mesh.material = dof.material.depth;
+        }
+        arca.board.mesh.__mat = arca.board.mesh.material;
+        arca.board.mesh.material = dof.material.depth;
+    } else {
+        for (var i in arca.walls) {
+            arca.walls[i].material = arca.walls[i].__mat;
+        }
+        for (var i in arca.targets) {
+            arca.targets[i].mesh.material = arca.targets[i].mesh.__mat;
+        }
+        arca.board.mesh.material = arca.board.mesh.__mat;
+    }
+}
 
 function run() {
     stats.begin();
     
     arca.update();
-    renderer.render(scene, camera);
+    
+    renderer.clear();
+    if (useEffect) {
+        // render to texture
+        renderer.render(scene, camera, dof.texture, true);
+        setMaterial(true);
+        renderer.render(scene, camera, dof.depth, true);
+        setMaterial(false);
+        
+        // render with dof
+        renderer.render(dof.scene, dof.camera);
+        // render ball model
+        //renderer.render(modelScene, camera);
+    } else {
+        renderer.render(scene, camera);
+    }
     
     stats.end();
     
     requestAnimationFrame(run);
 }
 
+function resize() {
+    width = $(window).width();
+    height = $(window).height();
+    if (width / height > ratio) {
+        width = height * ratio;
+    } else {
+        height = width / ratio;
+    }
+
+    $('#container').css({width: width, height: height});
+    if (renderer) {
+        renderer.setSize(width, height);
+    }
+}
+
 function addMouseHandler() {
+    $(window).resize(resize);
+    
     mousePressed = false;
     var dom = renderer.domElement;
-    var cx = $('#container').width();
-    var cy = $('#container').height();
+    var cx = width;
+    var cy = height;
     
     dom.addEventListener('mousedown', function(e) {
         e.preventDefault();
@@ -345,30 +530,51 @@ function initSound() {
 
 function initTargets() {
     for (var i in arca.targets) {
-        var target = arca.targets[i];
-        var url = target.mapUrl;
+        var url = arca.targets[i].mapUrl;
         // materials
         if (url) {
             var map = THREE.ImageUtils.loadTexture(url);
             var material = new THREE.MeshPhongMaterial({
                 map: map
             });
-            target.mesh = new THREE.Mesh(
-                    new THREE.CubeGeometry(target.size.x, 
-                            target.size.y, target.size.z), 
+            arca.targets[i].mesh = new THREE.Mesh(
+                    new THREE.CubeGeometry(arca.targets[i].size.x, 
+                            arca.targets[i].size.y, arca.targets[i].size.z), 
                     material);
         } else {
-            target.mesh = new THREE.Mesh(
-                    new THREE.CubeGeometry(target.size.x, 
-                            target.size.y, target.size.z), 
+            arca.targets[i].mesh = new THREE.Mesh(
+                    new THREE.CubeGeometry(arca.targets[i].size.x, 
+                            arca.targets[i].size.y, arca.targets[i].size.z), 
                     new THREE.MeshLambertMaterial({
                         color: colors[Math.ceil(Math.random() 
                                 * (colors.length - 1))]
                     }));
         }
-        target.mesh.position = target.position;
-        scene.add(target.mesh);
+        arca.targets[i].mesh.position = arca.targets[i].position;
+        scene.add(arca.targets[i].mesh);
     }
+}
+
+function initDof() {
+    $.get('shader/dof.vs', function(data){
+        dof.shader.dofVert = data;
+        checkLoaded();
+    });
+    
+    $.get('shader/dof.fs', function(data){
+        dof.shader.dofFrag = data;
+        checkLoaded();
+    });
+    
+    $.get('shader/depth.vs', function(data){
+        dof.shader.depthVert = data;
+        checkLoaded();
+    });
+    
+    $.get('shader/depth.fs', function(data){
+        dof.shader.depthFrag = data;
+        checkLoaded();
+    });
 }
 
 function pauseToggle() {
@@ -401,7 +607,7 @@ function loadModel() {
         scene.add(ballLight);
         
         // ball plane to show ball position
-        ballPlane = new THREE.Mesh(
+        /*ballPlane = new THREE.Mesh(
                 new THREE.CubeGeometry(wallSize.x, wallSize.y, 5),
                 new THREE.MeshLambertMaterial({
                     color: 0x66ff00,
@@ -411,6 +617,8 @@ function loadModel() {
         );
         ballPlane.position.z = arca.ball.position.z + arca.ball.size.z / 2;
         scene.add(ballPlane);
+        */
+        
         checkLoaded();
     });
     loader.load('model/machine.obj', 'model/machine.mtl');
@@ -425,6 +633,12 @@ function checkLoaded() {
                 allLoaded = false;
             }
         });
+        for (var i in dof.shader) {
+            if (dof.shader[i] === null) {
+                allLoaded = false;
+                break;
+            }
+        }
         if (allLoaded) {
             clearInterval(checkHandle);
             
@@ -432,8 +646,9 @@ function checkLoaded() {
             allLoaded = true;
             // show game panel
             $('#loading').hide();
-            $('#gamePanel').fadeIn();        
-            run();
+            $('#gamePanel').fadeIn();
+            
+            beforeStart();
         } else {
             // check later
             checkHandle = setInterval(checkLoaded, 500);

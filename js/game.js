@@ -11,7 +11,7 @@ function ArcaLands() {
     this.targetRegion = {
         x: wallSize.x,
         y: wallSize.y,
-        z: wallSize.z / 3
+        z: wallSize.z / 3 * 2
     };
     this.targets = [];
     // light for hitting targets
@@ -46,17 +46,7 @@ ArcaLands.prototype.targetMap =
           [1, 1, 0, 0, 0, 0, 1, 1]
          ],
          
-         [[0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0]
-         ],
+         [0],
          
          [[0, 0, 0, 1, 1, 0, 0, 0],
           [0, 0, 0, 1, 1, 0, 0, 0],
@@ -69,7 +59,9 @@ ArcaLands.prototype.targetMap =
           [0, 0, 0, 1, 1, 0, 0, 0],
           [0, 0, 0, 1, 1, 0, 0, 0]
          ],
-                  
+         
+         [0],
+         
          [[3, 0, 0, 0, 0, 0, 0, 3],
           [0, 2, 0, 0, 0, 0, 2, 0],
           [0, 0, 0, 0, 0, 0, 0, 0],
@@ -82,6 +74,12 @@ ArcaLands.prototype.targetMap =
           [3, 0, 0, 0, 0, 0, 0, 3]
          ],
          
+         [0],
+         
+         [0],
+         
+         [0],
+         
          [[0, 0, 0, 0, 0, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 0],
@@ -93,6 +91,8 @@ ArcaLands.prototype.targetMap =
           [0, 0, 0, 0, 0, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 0]
          ],
+         
+         [0],
          
          [[0, 0, 0, 0, 0, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 0],
@@ -261,18 +261,22 @@ ArcaLands.prototype.createTargets = function(arr) {
     var zSize = this.targetRegion.z / zCnt;
     var type = ['', 'wood', 'metal', 'stone'];
     for (var z = 0; z < zCnt; ++z) {
-        for (var y = 0; y < yCnt; ++y) {
-            for (var x = 0; x < xCnt; ++x) {
-                if (arr[z][y][x] > 0) {
-                    var target = new Target(
-                            type[arr[z][y][x]],
-                            xSize * x + xSize / 2 - this.targetRegion.x / 2,
-                            ySize * y + ySize / 2 - this.targetRegion.y / 2,
-                            zSize * z + zSize / 2 - wallSize.z);
-                    target.size.x = xSize;
-                    target.size.y = ySize;
-                    target.size.z = zSize;
-                    this.targets.push(target);
+        if (arr[z]) {
+            for (var y = 0; y < yCnt; ++y) {
+                if (arr[z][y]) {
+                    for (var x = 0; x < xCnt; ++x) {
+                        if (arr[z][y][x] > 0) {
+                            var target = new Target(
+                                type[arr[z][y][x]],
+                                xSize * x + xSize / 2 - this.targetRegion.x / 2,
+                                ySize * y + ySize / 2 - this.targetRegion.y / 2,
+                                zSize * z + zSize / 2 - wallSize.z);
+                            target.size.x = xSize;
+                            target.size.y = ySize;
+                            target.size.z = zSize;
+                            this.targets.push(target);
+                        }
+                    }
                 }
             }
         }
@@ -310,7 +314,7 @@ ArcaLands.prototype.update = function() {
         return;
     }
     
-    if (this.gameStatus = this.GameStatus.IN_GAME) {
+    if (this.gameStatus === this.GameStatus.IN_GAME) {
         this.checkGameOver();
         
         if (this.gameStatus === this.GameStatus.GAME_WIN) {
@@ -666,9 +670,9 @@ Ball.prototype.release = function() {
     var vx = Math.random() * 20 - 10;
     var vy = Math.sqrt(200 - vx * vx) * (Math.random() > 0.5 ? 1 : -1);
     this.v = {
-        x: vx,
-        y: vy,
-        z: 15
+        x: vx / 2,
+        y: vy / 2,
+        z: 5
     };
     
     this.status = this.Status.MOVING;
@@ -681,7 +685,11 @@ Ball.prototype.move = function() {
     this.v.x += this.a.x;
     this.v.y += this.a.y;
     this.v.z += this.a.z;
-    ballPlane.position.z = this.position.z + this.size.z / 2;
+    //ballPlane.position.z = this.position.z + this.size.z / 2;
+    
+    // dof focus info
+    dof.material.dof.uniforms.focusDistance.value = wallSize.z / 2
+            - this.position.z - this.size.z / 2;
     
     // sweep sound that moves with ball
     if (allLoaded) {
