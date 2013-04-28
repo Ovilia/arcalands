@@ -47,6 +47,7 @@ ArcaLands.prototype.targetMap =
          ],
          
          [0],
+         [0],
          
          [[0, 0, 0, 1, 1, 0, 0, 0],
           [0, 0, 0, 1, 1, 0, 0, 0],
@@ -60,6 +61,7 @@ ArcaLands.prototype.targetMap =
           [0, 0, 0, 1, 1, 0, 0, 0]
          ],
          
+         [0],
          [0],
          
          [[3, 0, 0, 0, 0, 0, 0, 3],
@@ -93,17 +95,18 @@ ArcaLands.prototype.targetMap =
          ],
          
          [0],
+         [0],
          
-         [[0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
+         [[3, 0, 3, 0, 0, 3, 0, 3],
+          [0, 2, 0, 0, 0, 0, 2, 0],
+          [3, 0, 0, 0, 0, 0, 0, 3],
           [0, 0, 0, 0, 0, 0, 0, 0],
           [0, 0, 0, 1, 1, 0, 0, 0],
           [0, 0, 0, 1, 1, 0, 0, 0],
           [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 0, 0, 0, 0]
+          [3, 0, 0, 0, 0, 0, 0, 3],
+          [0, 2, 0, 0, 0, 0, 2, 0],
+          [3, 0, 3, 0, 0, 3, 0, 3]
          ]],
          
          
@@ -239,7 +242,7 @@ ArcaLands.prototype.startGame = function() {
     this.ball.status = Ball.prototype.Status.BEFORE_START;
     
     this.removeTargets();
-    this.createTargets(this.targetMap[this.level]);
+    this.createTargets(this.targetTestMap[this.level]);
     
     this.targetLightFrames = 0;
     targetLight.intensity = 0;
@@ -590,7 +593,7 @@ function Board() {
         z: 20
     };
     
-    this.position = new THREE.Vector3(0, 0, -200);
+    this.position = new THREE.Vector3(0, 0, -100);
 }
 Board.prototype = Object.create(Rigid.prototype);
 
@@ -670,8 +673,8 @@ Ball.prototype.release = function() {
     var vx = Math.random() * 20 - 10;
     var vy = Math.sqrt(200 - vx * vx) * (Math.random() > 0.5 ? 1 : -1);
     this.v = {
-        x: vx / 2,
-        y: vy / 2,
+        x: vx / 20,
+        y: vy / 20,
         z: 5
     };
     
@@ -688,8 +691,8 @@ Ball.prototype.move = function() {
     //ballPlane.position.z = this.position.z + this.size.z / 2;
     
     // dof focus info
-    dof.material.dof.uniforms.focusDistance.value = wallSize.z / 2
-            - this.position.z - this.size.z / 2;
+    dof.material.dof.uniforms.focusDistance.value = 
+            cameraNear - this.position.z - this.size.z;
     
     // sweep sound that moves with ball
     if (allLoaded) {

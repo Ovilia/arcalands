@@ -90,6 +90,7 @@ $(document).ready(function() {
     
     // light
     var light = new THREE.PointLight(0xffffff);
+    light.position.z = 100;
     scene.add(light);
     var dofLight = new THREE.PointLight(0xffffff);
     dofLight.position = dof.camera.position;
@@ -218,12 +219,12 @@ function beforeStart() {
             // world position which is exactly in focus
             focusDistance: {
                 type: 'f',
-                value: arca.ball.position.z
+                value: cameraNear - arca.ball.position.z
             },
             // length of objects in focus
             focalLength: {
                 type: 'f',
-                value: 200
+                value: 10
             },
             
             clipNear: {
@@ -271,6 +272,9 @@ function setMaterial (isDepth) {
         }
         arca.board.mesh.__mat = arca.board.mesh.material;
         arca.board.mesh.material = dof.material.depth;
+        
+        //arca.ball.mesh.__mat = arca.ball.mesh.material;
+        //arca.ball.mesh.material = dof.material.depth;
     } else {
         for (var i in arca.walls) {
             arca.walls[i].material = arca.walls[i].__mat;
@@ -279,6 +283,7 @@ function setMaterial (isDepth) {
             arca.targets[i].mesh.material = arca.targets[i].mesh.__mat;
         }
         arca.board.mesh.material = arca.board.mesh.__mat;
+        //arca.ball.mesh.material = arca.ball.mesh.__mat;
     }
 }
 
@@ -453,11 +458,11 @@ function initSound() {
                     $('#' + name).data('effectId', 
                             $('#' + name).jWebAudio('effect', '3d'));
                     loaded[name] = true;
-                    $('#' + name).data('volume', 200); 
+                    $('#' + name).data('volume', 150); 
                 };
             }(types[i]),
             multishot: true,
-            volume: 200
+            volume: 150
         });
     }
     
@@ -467,12 +472,12 @@ function initSound() {
         preLoad: true,
         callback: function() {
             $('#sweep').data('effectId', $('#sweep').jWebAudio('effect', '3d'));
-            $('#sweep').data('volume', 100);
+            $('#sweep').data('volume', 80);
             $('#sweep').jWebAudio('play');
             loaded.sweep = true;
         },
         loop: true,
-        volume: 100
+        volume: 30
     });
     
     // background music
@@ -484,7 +489,7 @@ function initSound() {
             $('#background').jWebAudio('play');
             loaded.background = true;
         },
-        volume: 20
+        volume: 80
     });
     
     // mute button

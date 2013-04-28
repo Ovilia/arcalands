@@ -26,7 +26,7 @@ uniform float layerCount;
 void main() {
     // depth was from 0.0 to 1.0
     // map it in world space, which is from clipNear to clipFar
-    float zbuffer = (1.0 - texture2D(depth, vUv).r) * (clipFar - clipNear)
+    float zbuffer = texture2D(depth, vUv).r * (clipFar - clipNear)
             + clipNear;
     
     // calculate CoC
@@ -36,9 +36,9 @@ void main() {
     if (distance < focalLength / 2.0) {
         distance = 0.0;
     } else {
-        distance -= focalLength / 2.0;
+        distance = abs(distance - focalLength / 2.0);
     }
-    int coc = int (distance / (clipFar - clipNear - focalLength) * float(maxCoc));
+    int coc = int(distance / (clipFar - clipNear) * float(maxCoc));
     coc = coc < maxCoc ? coc : maxCoc;
     int cocDouble = coc * 2;
     
@@ -104,5 +104,6 @@ void main() {
     }
     float c = cnt;
     float cc = float(cocDouble);
-    gl_FragColor = color;
+    float a = distance / (clipFar - clipNear);
+    gl_FragColor = vec4(a, a, a, 1.0);
 }
