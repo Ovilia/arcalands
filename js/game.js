@@ -242,7 +242,7 @@ ArcaLands.prototype.startGame = function() {
     this.ball.status = Ball.prototype.Status.BEFORE_START;
     
     this.removeTargets();
-    this.createTargets(this.targetTestMap[this.level]);
+    this.createTargets(this.targetMap[this.level]);
     
     this.targetLightFrames = 0;
     targetLight.intensity = 0;
@@ -692,7 +692,7 @@ Ball.prototype.move = function() {
     
     // dof focus info
     dof.material.dof.uniforms.focusDistance.value = 
-            cameraNear - this.position.z - this.size.z;
+            cameraFar + this.position.z - 200;
     
     // sweep sound that moves with ball
     if (allLoaded) {

@@ -186,8 +186,8 @@ function beforeStart() {
         uniforms: {
             farmostDepth: {
                 type: 'f',
-                value: 1000
-            },
+                value: 1800
+            }
         },
         attributes: {},
         vertexShader: dof.shader.depthVert,
@@ -219,12 +219,7 @@ function beforeStart() {
             // world position which is exactly in focus
             focusDistance: {
                 type: 'f',
-                value: cameraNear - arca.ball.position.z
-            },
-            // length of objects in focus
-            focalLength: {
-                type: 'f',
-                value: 10
+                value: cameraFar + arca.ball.position.z - 200
             },
             
             clipNear: {
@@ -236,15 +231,9 @@ function beforeStart() {
                 value: cameraFar
             },
             
-            // max CoC, which should not be larger than MAX_RADIUS in dof.fs
-            maxCoc: {
+            algorithm: {
                 type: 'i',
-                value: 8
-            },
-            // layer counts if using layered method
-            layerCount: {
-                type: 'f',
-                value: 5
+                value: 0
             }
         },
         vertexShader: dof.shader.dofVert,
@@ -272,9 +261,6 @@ function setMaterial (isDepth) {
         }
         arca.board.mesh.__mat = arca.board.mesh.material;
         arca.board.mesh.material = dof.material.depth;
-        
-        //arca.ball.mesh.__mat = arca.ball.mesh.material;
-        //arca.ball.mesh.material = dof.material.depth;
     } else {
         for (var i in arca.walls) {
             arca.walls[i].material = arca.walls[i].__mat;
@@ -283,8 +269,17 @@ function setMaterial (isDepth) {
             arca.targets[i].mesh.material = arca.targets[i].mesh.__mat;
         }
         arca.board.mesh.material = arca.board.mesh.__mat;
-        //arca.ball.mesh.material = arca.ball.mesh.__mat;
     }
+    
+    arca.ball.mesh.traverse(function(child){
+        if (child instanceof THREE.Mesh) {
+            if (isDepth) {
+                child.material = dof.material.depth;
+            } else {
+                child.material = arca.ball.mesh.material;
+            }            
+        }
+    });
 }
 
 function run() {
@@ -393,8 +388,6 @@ function addMouseHandler() {
             var y = e.touches[0].pageY * 812 / 680;
             arca.board.move(x - parseInt($('#container')
                     .css('margin-left')), y, cx, cy);
-            $('#x').text(x);
-            $('#y').text(y);
         }
     }, false);
 }
@@ -433,17 +426,26 @@ function initDom() {
     
     // effect toggle
     $('#effect').click(function() {
-        useEffect = !useEffect;
-        if (useEffect) {
-            // add effect
-            $('#effect').text('Disable Shader')
-                        .css('background-color', '#ff6');
+        var old = $('#effect').data('algorithm');
+        if (old === 0) {
+            dof.material.dof.uniforms.algorithm.value = 0;
+            useEffect = true;
+            $('#effect').text('Forward Algorithm')
+                        .css('background-color', '#ff6')
+                        .data('algorithm', 1);
+        } else if (old === 1) {
+            dof.material.dof.uniforms.algorithm.value = 1;
+            useEffect = true;
+            $('#effect').text('Reversed Algorithm')
+                        .css('background-color', '#ff6')
+                        .data('algorithm', 2);
         } else {
-            // remove effect
-            $('#effect').text('Enable Shader')
-                        .css('background-color', '#f60');
+            useEffect = false;
+            $('#effect').text('No Shader')
+                        .css('background-color', '#f60')
+                        .data('algorithm', 0);
         }
-    });
+    }).data('algorithm', 1);
 }
 
 function initSound() {
@@ -605,24 +607,19 @@ function loadModel() {
         arca.ball.mesh.position = arca.ball.position;
         arca.ball.mesh.scale.set(15, 15, 15);
         arca.ball.mesh.rotation.x = Math.PI / 2;
+        arca.ball.mesh.traverse(function(child){
+            if (child instanceof THREE.Mesh) {
+                arca.ball.mesh.material = child.material;
+            }
+        });
+        
         scene.add(arca.ball.mesh);
+        
         // light following ball
         var ballLight = new THREE.PointLight(0x00ff00, 2.0, 500);
         ballLight.position = arca.ball.position;
-        scene.add(ballLight);
         
-        // ball plane to show ball position
-        /*ballPlane = new THREE.Mesh(
-                new THREE.CubeGeometry(wallSize.x, wallSize.y, 5),
-                new THREE.MeshLambertMaterial({
-                    color: 0x66ff00,
-                    transparent: true,
-                    opacity: 0.2
-                })
-        );
-        ballPlane.position.z = arca.ball.position.z + arca.ball.size.z / 2;
-        scene.add(ballPlane);
-        */
+        scene.add(ballLight);
         
         checkLoaded();
     });
