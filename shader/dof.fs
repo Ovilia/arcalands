@@ -23,7 +23,7 @@ uniform float clipNear;
 uniform float clipFar;
 uniform float focusDistance;
 
-#define focalLength 100.0
+#define focalLength 120.0
 #define minC 500.0
 #define maxC 2000.0
 #define aperture 50.0
@@ -100,6 +100,7 @@ vec4 getForwardResult(float thisCoc, float thisDepth) {
         }
     }
     
+    //return cnt;
     if (cnt == 0) {
         return texture2D(texture, vUv);
     } else {
@@ -110,7 +111,7 @@ vec4 getForwardResult(float thisCoc, float thisDepth) {
 }
 
 // blur using reversed-mapped algorithm, return blurred color
-vec4 getReversedResult(float thisCoc) {
+vec4 getReversedResult(float thisCoc, float thisDepth) {
     vec4 sum;
     int cnt = 0;
     int cocLength = 2 * int(thisCoc);
@@ -121,8 +122,11 @@ vec4 getReversedResult(float thisCoc) {
                     vec2 neighbor = vec2(
                             vUv.x + (float(i) - thisCoc) / wSplitCnt,
                             vUv.y + (float(j) - thisCoc) / hSplitCnt);
-                    sum += texture2D(texture, neighbor);
-                    cnt += 1;
+                    float neighborDepth = texture2D(depth, neighbor).r;
+                    if (neighborDepth > thisDepth - 0.001) {
+                        sum += texture2D(texture, neighbor);
+                        cnt += 1;
+                    }
                 } else {
                     break;
                 }
@@ -148,9 +152,10 @@ void main() {
     
     // do blur
     if (algorithm == 1) {
-        gl_FragColor = getReversedResult(thisCoc);
+        gl_FragColor = getReversedResult(thisCoc, thisDepth);
     } else {
-        gl_FragColor = getForwardResult(thisCoc, thisDepth);
+        //int cnt = getForwardResult(thisCoc, thisDepth);
+        //float value = float(cnt) / 20.0;
+        gl_FragColor = getForwardResult(thisCoc, thisDepth);//vec4(value, value, value, 1.0);
     }
-    //gl_FragColor = texture2D(depth, vUv);
 }

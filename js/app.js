@@ -219,7 +219,7 @@ function beforeStart() {
             // world position which is exactly in focus
             focusDistance: {
                 type: 'f',
-                value: cameraFar + arca.ball.position.z - 200
+                value: cameraNear - arca.ball.position.z + 200
             },
             
             clipNear: {
@@ -479,7 +479,7 @@ function initSound() {
             loaded.sweep = true;
         },
         loop: true,
-        volume: 30
+        volume: 10
     });
     
     // background music

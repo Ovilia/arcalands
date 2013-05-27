@@ -20,6 +20,8 @@ function ArcaLands() {
     
     this.level = 1;
     this.maxLevel = 2;
+    
+    this.score = 0;
 }
 
 ArcaLands.prototype.targetTestMap = 
@@ -246,6 +248,8 @@ ArcaLands.prototype.startGame = function() {
     
     this.targetLightFrames = 0;
     targetLight.intensity = 0;
+    
+    this.score = 0;
 };
 
 ArcaLands.prototype.removeTargets = function() {
@@ -396,7 +400,8 @@ ArcaLands.prototype.update = function() {
         this.gameStatus = this.GameStatus.GAME_LOSE;
         setEffectPos('#gameLose', true);
         setEffectPos('#sweep', false);
-        $('#gameOver').html('You lose!<br>Click to re-play.').fadeIn();
+        $('#gameOver').html('You lose!<br><br>Score:' + this.score
+                + '<br>Click to re-play.').fadeIn();
         this.ball.v.x = this.ball.v.y = 0;
     }
     if (hitWall) {
@@ -429,6 +434,7 @@ ArcaLands.prototype.update = function() {
             this.ball.v.z = -this.ball.v.z;
             // rotate speed change
             this.ball.rotHitFrames = 0;
+            this.score += 1;
             
             if (tar.hit(1)) {
                 // cause death
@@ -670,12 +676,12 @@ Ball.prototype.stickToBoard = function(board) {
 }
 
 Ball.prototype.release = function() {
-    var vx = Math.random() * 20 - 10;
-    var vy = Math.sqrt(200 - vx * vx) * (Math.random() > 0.5 ? 1 : -1);
+    var vx = Math.random() * 100 - 50;
+    var vy = Math.sqrt(2500 - vx * vx) * (Math.random() > 0.5 ? 1 : -1);
     this.v = {
         x: vx / 20,
         y: vy / 20,
-        z: 5
+        z: 10
     };
     
     this.status = this.Status.MOVING;
@@ -692,7 +698,7 @@ Ball.prototype.move = function() {
     
     // dof focus info
     dof.material.dof.uniforms.focusDistance.value = 
-            cameraFar + this.position.z - 200;
+            cameraNear - this.position.z + 200;
     
     // sweep sound that moves with ball
     if (allLoaded) {
