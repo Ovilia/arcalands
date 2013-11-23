@@ -687,10 +687,6 @@ Ball.prototype.move = function() {
     this.v.z += this.a.z;
     //ballPlane.position.z = this.position.z + this.size.z / 2;
     
-    // dof focus info
-    dof.material.dof.uniforms.focusDistance.value = wallSize.z / 2
-            - this.position.z - this.size.z / 2;
-    
     // sweep sound that moves with ball
     if (allLoaded) {
         setEffectPos('#sweep', false);

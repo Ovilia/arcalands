@@ -14,8 +14,7 @@ var renderer = null,
     targetLight = null,
     ballPlane = null;
     
-var muted = false,
-    useEffect = true;
+var muted = false;
     
 var wallSize = {
     x: 1600,
@@ -25,26 +24,6 @@ var wallSize = {
     
 var mousePressed = false,
     touchPressed = false;
-
-var dof = {
-    shader: {
-        dofVert: null,
-        dofFrag: null,
-        depthVert: null,
-        depthFrag: null
-    },
-    material: {
-        dof: null,
-        depth: null
-    },
-    mesh: null,
-    
-    texture: null,
-    depth: null,
-    
-    scene: null,
-    camera: null
-}
 
 // things loaded
 var loaded = {},
@@ -74,7 +53,6 @@ $(document).ready(function() {
     // scene
     scene = new THREE.Scene();
     modelScene = new THREE.Scene();
-    dof.scene = new THREE.Scene();
     
     // camera
     cameraNear = 600 * Math.sqrt(3);
@@ -83,17 +61,9 @@ $(document).ready(function() {
     camera.position.set(0, 0, cameraNear);
     scene.add(camera);
     
-    dof.camera = new THREE.OrthographicCamera(-width / 2, width / 2,
-            height / 2, -height / 2, -10000, 10000);
-    dof.camera.position.z = 1000;
-    dof.scene.add(dof.camera);
-    
     // light
     var light = new THREE.PointLight(0xffffff);
     scene.add(light);
-    var dofLight = new THREE.PointLight(0xffffff);
-    dofLight.position = dof.camera.position;
-    dof.scene.add(dofLight);
     
     arca = new ArcaLands();
     
@@ -157,130 +127,9 @@ $(document).ready(function() {
     
     initDom();
     initSound();
-    initDof();
     
     loadModel();
 });
-
-function beforeStart() {
-    // init frame buffer to get texture and depth data
-    dof.texture = new THREE.WebGLRenderTarget(width, height, {
-        wrapS: THREE.RepeatWrapping,
-        wrapT: THREE.RepeatWrapping,
-        minFilter: THREE.LinearFilter,
-        magFilter: THREE.NearestFilter,
-        format: THREE.RGBAFormat
-    });
-    dof.depth = new THREE.WebGLRenderTarget(width, height, {
-        wrapS: THREE.RepeatWrapping,
-        wrapT: THREE.RepeatWrapping,
-        minFilter: THREE.LinearFilter,
-        magFilter: THREE.NearestFilter,
-        format: THREE.RGBAFormat
-    });
-    
-    // dof display plane
-    // depth material
-    dof.material.depth = new THREE.ShaderMaterial({
-        uniforms: {
-            farmostDepth: {
-                type: 'f',
-                value: 1000
-            },
-        },
-        attributes: {},
-        vertexShader: dof.shader.depthVert,
-        fragmentShader: dof.shader.depthFrag,
-        transparent: true
-    });
-    
-    // render to target material
-    dof.material.dof = new THREE.ShaderMaterial({
-        uniforms: {
-            texture: {
-                type: 't',
-                value: dof.texture
-            },
-            depth: {
-                type: 't',
-                value: dof.depth
-            },
-            
-            wSplitCnt: {
-                type: 'f',
-                value: width
-            },
-            hSplitCnt: {
-                type: 'f',
-                value: height
-            },
-            
-            // world position which is exactly in focus
-            focusDistance: {
-                type: 'f',
-                value: arca.ball.position.z
-            },
-            // length of objects in focus
-            focalLength: {
-                type: 'f',
-                value: 200
-            },
-            
-            clipNear: {
-                type: 'f',
-                value: cameraNear
-            },
-            clipFar: {
-                type: 'f',
-                value: cameraFar
-            },
-            
-            // max CoC, which should not be larger than MAX_RADIUS in dof.fs
-            maxCoc: {
-                type: 'i',
-                value: 8
-            },
-            // layer counts if using layered method
-            layerCount: {
-                type: 'f',
-                value: 5
-            }
-        },
-        vertexShader: dof.shader.dofVert,
-        fragmentShader: dof.shader.dofFrag,
-        depthWrite: false
-    });
-    dof.mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(width, height), dof.material.dof);
-    dof.mesh.position.z = 1000;
-    dof.scene.add(dof.mesh);
-    
-    // start
-    run();
-}
-
-function setMaterial (isDepth) {
-    if (isDepth) {
-        for (var i in arca.walls) {
-            arca.walls[i].__mat = arca.walls[i].material;
-            arca.walls[i].material = dof.material.depth;
-        }
-        for (var i in arca.targets) {
-            arca.targets[i].mesh.__mat = arca.targets[i].mesh.material;
-            arca.targets[i].mesh.material = dof.material.depth;
-        }
-        arca.board.mesh.__mat = arca.board.mesh.material;
-        arca.board.mesh.material = dof.material.depth;
-    } else {
-        for (var i in arca.walls) {
-            arca.walls[i].material = arca.walls[i].__mat;
-        }
-        for (var i in arca.targets) {
-            arca.targets[i].mesh.material = arca.targets[i].mesh.__mat;
-        }
-        arca.board.mesh.material = arca.board.mesh.__mat;
-    }
-}
 
 function run() {
     stats.begin();
@@ -288,20 +137,7 @@ function run() {
     arca.update();
     
     renderer.clear();
-    if (useEffect) {
-        // render to texture
-        renderer.render(scene, camera, dof.texture, true);
-        setMaterial(true);
-        renderer.render(scene, camera, dof.depth, true);
-        setMaterial(false);
-        
-        // render with dof
-        renderer.render(dof.scene, dof.camera);
-        // render ball model
-        //renderer.render(modelScene, camera);
-    } else {
-        renderer.render(scene, camera);
-    }
+    renderer.render(scene, camera);
     
     stats.end();
     
@@ -356,42 +192,6 @@ function addMouseHandler() {
                     .css('margin-left')), e.pageY, cx, cy);
         }
     }, false);
-    
-    dom.addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        
-        touchPressed = true;
-        
-        if (arca.gameStatus === ArcaLands.prototype.GameStatus.GAME_LOSE) {
-            $('#gameOver').fadeOut();
-            arca.startGame();
-            initTargets();
-        }
-    }, false);
-    
-    dom.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        
-        if (allLoaded && arca.ball.status === 
-                Ball.prototype.Status.BEFORE_START) {
-            arca.ball.release();
-        }
-        
-        touchPressed = false;
-    }, false);
-    
-    dom.addEventListener('touchmove', function(e) {
-        e.preventDefault();
-        
-        if (allLoaded && arca.gameStatus !== arca.GameStatus.PAUSED) {
-            var x = e.touches[0].pageX * 1600 / 1280;
-            var y = e.touches[0].pageY * 812 / 680;
-            arca.board.move(x - parseInt($('#container')
-                    .css('margin-left')), y, cx, cy);
-            $('#x').text(x);
-            $('#y').text(y);
-        }
-    }, false);
 }
 
 function initDom() {
@@ -424,20 +224,6 @@ function initDom() {
         top: (h - parseInt($('#creditsPanel').css('height'))) / 2 - padding
     }).click(function() {
         $('#creditsPanel').fadeOut();
-    });
-    
-    // effect toggle
-    $('#effect').click(function() {
-        useEffect = !useEffect;
-        if (useEffect) {
-            // add effect
-            $('#effect').text('Disable Shader')
-                        .css('background-color', '#ff6');
-        } else {
-            // remove effect
-            $('#effect').text('Enable Shader')
-                        .css('background-color', '#f60');
-        }
     });
 }
 
@@ -555,28 +341,6 @@ function initTargets() {
     }
 }
 
-function initDof() {
-    $.get('shader/dof.vs', function(data){
-        dof.shader.dofVert = data;
-        checkLoaded();
-    });
-    
-    $.get('shader/dof.fs', function(data){
-        dof.shader.dofFrag = data;
-        checkLoaded();
-    });
-    
-    $.get('shader/depth.vs', function(data){
-        dof.shader.depthVert = data;
-        checkLoaded();
-    });
-    
-    $.get('shader/depth.fs', function(data){
-        dof.shader.depthFrag = data;
-        checkLoaded();
-    });
-}
-
 function pauseToggle() {
     if (arca.gameStatus === arca.GameStatus.IN_GAME) {
         $('#container').css('cursor', 'auto');
@@ -633,12 +397,6 @@ function checkLoaded() {
                 allLoaded = false;
             }
         });
-        for (var i in dof.shader) {
-            if (dof.shader[i] === null) {
-                allLoaded = false;
-                break;
-            }
-        }
         if (allLoaded) {
             clearInterval(checkHandle);
             
@@ -648,7 +406,7 @@ function checkLoaded() {
             $('#loading').hide();
             $('#gamePanel').fadeIn();
             
-            beforeStart();
+            run();
         } else {
             // check later
             checkHandle = setInterval(checkLoaded, 500);
