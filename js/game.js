@@ -695,16 +695,18 @@ Ball.prototype.move = function() {
 
 // rotate and scale
 Ball.prototype.update = function() {
-    if (this.rotHitFrames < this.rotHitMaxFrames) {
-        // use hit speed
-        this.mesh.rotation.y += this.rotHitV;
-        ++this.rotHitFrames;
-    } else {
-        // use rotV
-        this.mesh.rotation.y += this.rotV;
-    }
-    if (this.mesh.rotation.y < Math.PI * 2) {
-        this.mesh.rotation.y -= Math.PI * 2;
+    if (this.mesh) {
+        if (this.rotHitFrames < this.rotHitMaxFrames) {
+            // use hit speed
+            this.mesh.rotation.y += this.rotHitV;
+            ++this.rotHitFrames;
+        } else {
+            // use rotV
+            this.mesh.rotation.y += this.rotV;
+        }
+        if (this.mesh.rotation.y < Math.PI * 2) {
+            this.mesh.rotation.y -= Math.PI * 2;
+        }
     }
 };
 
