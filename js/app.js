@@ -458,7 +458,7 @@ function initSound() {
             callback: function(name) {
                 return function() {
                     $('#' + name).data('effectId', 
-                            $('#' + name).jWebAudio('effect', '3d'));
+                            $('#' + name).jWebAudio('addEffect', '3d'));
                     loaded[name] = true;
                     $('#' + name).data('volume', 150); 
                 };
@@ -473,7 +473,7 @@ function initSound() {
         url: 'sound/sweep.ogg',
         preLoad: true,
         callback: function() {
-            $('#sweep').data('effectId', $('#sweep').jWebAudio('effect', '3d'));
+            $('#sweep').data('effectId', $('#sweep').jWebAudio('addEffect', '3d'));
             $('#sweep').data('volume', 80);
             $('#sweep').jWebAudio('play');
             loaded.sweep = true;
@@ -518,7 +518,7 @@ function initSound() {
             loaded.gameWin = true;
             $('#gameWin').data('volume', 100);
             $('#gameWin').data('effectId', 
-                    $('#gameWin').jWebAudio('effect', '3d'));
+                    $('#gameWin').jWebAudio('addEffect', '3d'));
         }
     });
     // game lose
@@ -530,7 +530,7 @@ function initSound() {
             loaded.gameLose = true;
             $('#gameLose').data('volume', 100);
             $('#gameLose').data('effectId', 
-                    $('#gameLose').jWebAudio('effect', '3d'));
+                    $('#gameLose').jWebAudio('addEffect', '3d'));
         }
     });
 }

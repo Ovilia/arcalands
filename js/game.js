@@ -724,7 +724,7 @@ Ball.prototype.update = function() {
 function setEffectPos(selector, toPlay, beforePlay) {
     var id = $(selector).data('effectId');
     if (id !== undefined) {
-        var node = $(selector).jWebAudio('get3dEffect', id).node;
+        var node = $(selector).jWebAudio('getEffect', id).inNode;
         // get 3d sound effect position according to ball position
         var pos = {
             x: arca.ball.position.x / 320,
@@ -742,7 +742,7 @@ function setEffectPos(selector, toPlay, beforePlay) {
         } else {
             var rate = 2;
             if (!beforePlay) {
-                node.setVelocity(arca.ball.v.x * rate, 
+                node.setOrientation(arca.ball.v.x * rate,
                         arca.ball.v.y * rate, 
                         arca.ball.v.z * rate);
             }
